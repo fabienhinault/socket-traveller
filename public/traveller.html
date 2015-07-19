@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="/stylesheets/traveller.css">
+  </head>
+  <body>
+    <input id="player"/>
+    <p id="start">&#9654;</p>
+    <canvas id="board" width="800" height="600">
+    </canvas>
+    <p>d = <span id="distance"></span></p>
+    <p>t = <span id="time"></span> ms</p>
+    <p id="status"></p>
+    <ol id="ways"></ol>
+  </body>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/javascripts/traveller.js"></script>
+</html>
