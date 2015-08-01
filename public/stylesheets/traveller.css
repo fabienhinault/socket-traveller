@@ -12,6 +12,10 @@ td, th{
   border-style: solid;
 }
 
+th{
+  font-weight: normal;
+}
+
 thead {
   font-size: x-large;
 }
