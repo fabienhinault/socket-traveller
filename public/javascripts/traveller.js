@@ -19,8 +19,13 @@
     ways = [],
     startBtn = document.getElementById('start');
 
+  boardContext.drawPoint = function (point, width) {
+    var offset = Math.ceil((width - 1) / 2);
+    this.fillRect(point.x - offset, point.y - offset, width, width);
+  };
+  
   boardContext.fillStyle = "#000000";
-  boardContext.fillRect(399, 299, 3, 3);
+  boardContext.drawPoint(startPoint, 5);
 
   function onStartClick(event) {
     var points = [],
@@ -33,10 +38,6 @@
     socket.emit('start', points);
   }
 
-  boardContext.drawPoint = function (point) {
-    this.fillRect(point.x - 1, point.y - 1, 3, 3);
-  };
-  
   function onSocketStart(sentPoints) {
     startBtn.removeEventListener('click', onStartClick);
     startBtn.className += " disabled";
@@ -46,10 +47,10 @@
     distance = 0;
     boardContext.beginPath();
     boardContext.clearRect(0, 0, boardWidth, boardHeight);
-    boardContext.fillRect(startPoint.x - 2, startPoint.y - 2, 5, 5);
+    boardContext.drawPoint(startPoint, 5);
     points = sentPoints;
     points.forEach(function (point) {
-      boardContext.fillRect(point.x - 1, point.y - 1, 3, 3);
+      boardContext.drawPoint(point, 3);
     });
     boardContext.moveTo(startPoint.x, startPoint.y);
     startTime = new Date().getTime();
@@ -126,13 +127,21 @@
     var iWay, way, iPoint, point, context;
     ways.push(sentWay);
     ways.sort(compareWays);
-    document.getElementById('ways').innerHTML =
+/*    document.getElementById('ways').innerHTML =
       ways.reduce(function (acc, way) {
         return acc + "<li>" + way.player +
-          " d = " + way.distance +
-          " t = " + way.duration + " ms " +
+          " &#128207; " + way.distance +
+          " &#8986; " + way.duration + " ms " +
           "<canvas id=\"" + way.player +
           "\" class=\"board\" width=\"100\" height=\"75\"></canvas></li>";
+      }, "");*/
+    document.getElementById('ways-table').innerHTML =
+      ways.reduce(function (acc, way, index) {
+        return acc + "<tr><td>" + (index + 1).toString() + "</td><td>" + way.player +
+          "</td><td>" + way.distance +
+          "</td><td>" + way.duration + " ms " +
+          "</td><td><canvas id=\"" + way.player +
+          "\" class=\"board\" width=\"100\" height=\"75\"></canvas></td></tr>";
       }, "");
     for (iWay = 0; iWay < ways.length; iWay += 1) {
       way = ways[iWay];
