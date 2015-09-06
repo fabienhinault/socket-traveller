@@ -14,11 +14,19 @@ app.set('port', process.env.PORT || 3000);
 io.on('connection', function(socket){
   socket.on('start', function(msg){
     console.log('start');
+    console.log(msg);
     io.emit('start', msg);
   });
   socket.on('way', function(msg){
     console.log('way');
+    console.log(msg);
     io.emit('way', msg);
+  });
+  socket.on('player', function(msg){
+    console.log('player');
+    console.log(msg);
+    // console.log(socket);
+    io.emit('player', msg);
   });
 });
 

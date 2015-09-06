@@ -5,17 +5,32 @@
     <link rel="stylesheet" href="/stylesheets/traveller.css">
   </head>
   <body>
-    <input id="player"/>
-    <p id="start">&#127939; &#9654;</p>
-    <canvas id="board" class="board" width="800" height="600">
-    </canvas>
-    <p>d = <span id="distance"></span></p>
-    <p>t = <span id="time"></span> ms</p>
-    <p id="status"></p>
-    <ol id="ways"></ol>
-    <table>
+    <div id="start">
+      🏃 
+      <input id="player" placeholder="Your pseudo"/>
+      <button id="btn-wait">⏯</button>
+      <span id="players"></span>
+      <button id="btn-start">▶</button>
+    </div>
+    <span id="run">
+      <canvas id="board" class="board" width="800" height="600">
+      </canvas>
+
+      <table>
+        <thead>
+          <th>📏</th><th>⌚</th>
+        </thead>
+        <tbody id="my-way-table">
+          <tr>
+            <td><span id="distance"></span></td>
+            <td><span id="time"></span> ms</td>
+          </tr>
+        </tbody>
+      </table>
+    </span>
+    <table id="result">
       <thead>
-        <th>&#127942;</th><th>&#127939;</th><th>&#128207;</th><th>&#8986;</th><th>&#x2608;</th>
+        <th>🏆</th><th>🏃</th><th>📏</th><th>⌚</th><th>☈</th>
       </thead>
       <tbody id="ways-table">
       </tbody>
