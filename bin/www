@@ -10,24 +10,16 @@ app.set('port', process.env.PORT || 3000);
 /*var server = app.listen(app.get('port'), function() {
   debug('Express server listening on port ' + server.address().port);
 });*/
+function broadcast(socket, msgName) {
+  socket.on(msgName, function(msg){
+    console.log(msgName);
+    console.log(msg);
+    io.emit(msgName, msg);
+  });
+}
 
 io.on('connection', function(socket){
-  socket.on('start', function(msg){
-    console.log('start');
-    console.log(msg);
-    io.emit('start', msg);
-  });
-  socket.on('way', function(msg){
-    console.log('way');
-    console.log(msg);
-    io.emit('way', msg);
-  });
-  socket.on('player', function(msg){
-    console.log('player');
-    console.log(msg);
-    // console.log(socket);
-    io.emit('player', msg);
-  });
+  ['start', 'way', 'player', 'please_wait'].forEach(function (str) {broadcast(socket, str);});
 });
 
 http.listen(3000, function(){

@@ -17,11 +17,32 @@
     duration,
     socket = io(),
     players = [],
+    waitingPlayers = [],
     ways = [],
     startBtn = document.getElementById('btn-start'),
     waitBtn = document.getElementById('btn-wait'),
     handlerTimeout;
 
+  function relMouseCoords(event){
+    var totalOffsetX = 0;
+    var totalOffsetY = 0;
+    var canvasX = 0;
+    var canvasY = 0;
+    var currentElement = this;
+
+    do{
+        totalOffsetX += currentElement.offsetLeft - currentElement.scrollLeft;
+        totalOffsetY += currentElement.offsetTop - currentElement.scrollTop;
+    }
+    while(currentElement = currentElement.offsetParent)
+
+    canvasX = event.pageX - totalOffsetX;
+    canvasY = event.pageY - totalOffsetY;
+
+    return {x:canvasX, y:canvasY}
+  }
+  HTMLCanvasElement.prototype.relMouseCoords = relMouseCoords;
+  
   boardContext.drawPoint = function (point, width) {
     var offset = Math.ceil((width - 1) / 2);
     this.fillRect(point.x - offset, point.y - offset, width, width);
@@ -61,7 +82,7 @@
     document.getElementById('players').innerHTML = players.join(', ');
   }
   
-  function onSocketPlayer(player) {
+  function acceptPlayer(player) {
     var myName = document.getElementById('player').value;
     if (-1 === players.indexOf(player)) {
       players.push(player);
@@ -70,12 +91,31 @@
         socket.emit('player', myName);
       }
     }
+    if (myName === player) {
+      socket.on('start', onSocketStart);
+    }
+  }
+  
+  function refusePlayer(player) {
+    if ((-1 === players.indexOf(player)) && (-1 === waitingPlayers.indexOf(player))){
+      waitingPlayers.push(player);
+      socket.emit('please_wait', player);
+    }
+  }
+  
+  function onPleaseWait(player) {
+    if (player === document.getElementById('player').value) {
+      document.getElementById('please_wait').style.display = 'block';
+    }
   }
   
   function onSocketStart(sentPoints) {
     startBtn.removeEventListener('click', onStartClick);
     startBtn.className += ' disabled';
     socket.removeListener('start', onSocketStart);
+    socket.removeListener('player', acceptPlayer);
+    socket.removeListener('please_wait', onPleaseWait);
+    socket.on('player', refusePlayer);
     ways = [];
     way = [startPoint];
     distance = 0;
@@ -86,7 +126,9 @@
     points.forEach(function (point) {
       boardContext.drawPoint(point, 3);
     });
+    console.log(points);
     boardContext.moveTo(startPoint.x, startPoint.y);
+    document.getElementById('please_wait').style.display = 'none';
     document.getElementById('run').style.display = 'inline';
     document.getElementById('run').style.visibility = 'visible';
     document.getElementById('result').style.visibility = 'hidden';
@@ -122,10 +164,12 @@
   }
   
   board.addEventListener('click', function (event) {
-    var x = event.pageX - boardLeft,
-      y = event.pageY - boardTop,
+    var coords = board.relMouseCoords(event),
+      x = coords.x,
+      y = coords.y,
       iPoint,
       point;
+    console.log(coords);
     for (iPoint = 0; iPoint < points.length; iPoint = iPoint + 1) {
       point = points[iPoint];
       if (y > point.y - 10 && y < point.y + 10 &&
@@ -136,11 +180,6 @@
       }
     }
   }, false);
-
-  startBtn.addEventListener('click', onStartClick, false);
-
-  socket.on('start', onSocketStart);
-  socket.on('player', onSocketPlayer);
 
   function compareWays(a, b) {
     var dd = a.distance - b.distance;
@@ -171,6 +210,16 @@
     context.stroke();
   }
   
+  function again() {
+    clearTimeout(handlerTimeout);
+    socket.on('start', onSocketStart);
+    socket.on('player', acceptPlayer);
+    startBtn.addEventListener('click', onStartClick, false);
+    startBtn.className = '';
+    players = players.concat(waitingPlayers);
+    viewUpdatePlayers();
+  }
+  
   function terminate() {
     var iPlayer = 0, player;
     while (iPlayer < players.length) {
@@ -188,9 +237,7 @@
       startBtn.style.visibility = 'hidden';
       points = [];
     } else {
-      socket.on('start', onSocketStart);
-      startBtn.addEventListener('click', onStartClick, false);
-      startBtn.className = '';
+      again();
     }
   }
   
@@ -220,18 +267,20 @@
       document.getElementById('run').style.display = 'none';
     }
     if (ways.length === players.length) {
-      clearTimeout(handlerTimeout);
-      socket.on('start', onSocketStart);
-      startBtn.addEventListener('click', onStartClick, false);
-      startBtn.className = '';
+      again();
     }
   });
   
+  
+  startBtn.addEventListener('click', onStartClick, false);
+  socket.on('player', acceptPlayer);
+  socket.on('please_wait', onPleaseWait);
   if ('' === document.getElementById('player').value) {
     waitBtn.style.visibility = 'hidden';
   }
   startBtn.style.visibility = 'hidden';
   document.getElementById('run').style.visibility = 'hidden';
   document.getElementById('result').style.visibility = 'hidden';
+  document.getElementById('please_wait').style.display = 'none';
 
 }());
