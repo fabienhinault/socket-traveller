@@ -23,25 +23,24 @@
     waitBtn = document.getElementById('btn-wait'),
     handlerTimeout;
 
-  function relMouseCoords(event){
-    var totalOffsetX = 0;
-    var totalOffsetY = 0;
-    var canvasX = 0;
-    var canvasY = 0;
-    var currentElement = this;
+  HTMLCanvasElement.prototype.relativeMouseCoords = function (event) {
+    var totalOffsetX = 0,
+      totalOffsetY = 0,
+      canvasX = 0,
+      canvasY = 0,
+      currentElement;
+    currentElement = this;
 
-    do{
-        totalOffsetX += currentElement.offsetLeft - currentElement.scrollLeft;
-        totalOffsetY += currentElement.offsetTop - currentElement.scrollTop;
-    }
-    while(currentElement = currentElement.offsetParent)
+    do {
+      totalOffsetX += currentElement.offsetLeft - currentElement.scrollLeft;
+      totalOffsetY += currentElement.offsetTop - currentElement.scrollTop;
+    } while (currentElement = currentElement.offsetParent);
 
     canvasX = event.pageX - totalOffsetX;
     canvasY = event.pageY - totalOffsetY;
 
-    return {x:canvasX, y:canvasY}
-  }
-  HTMLCanvasElement.prototype.relMouseCoords = relMouseCoords;
+    return {x: canvasX, y: canvasY};
+  };
   
   boardContext.drawPoint = function (point, width) {
     var offset = Math.ceil((width - 1) / 2);
@@ -53,7 +52,6 @@
   
   function onWaitClick(event) {
     socket.emit('player', document.getElementById('player').value);
-    document.getElementById('btn-start').style.visibility = 'visible';
   }
   
   function onPlayerInput(event) {
@@ -63,8 +61,6 @@
   }
   
   document.getElementById('player').addEventListener('input', onPlayerInput, false);
-  
-  
   waitBtn.addEventListener('click', onWaitClick, false);
 
   function onStartClick(event) {
@@ -82,22 +78,9 @@
     document.getElementById('players').innerHTML = players.join(', ');
   }
   
-  function acceptPlayer(player) {
-    var myName = document.getElementById('player').value;
-    if (-1 === players.indexOf(player)) {
-      players.push(player);
-      viewUpdatePlayers();
-      if (('' !== myName) && (-1 !== players.indexOf(myName))) {
-        socket.emit('player', myName);
-      }
-    }
-    if (myName === player) {
-      socket.on('start', onSocketStart);
-    }
-  }
   
   function refusePlayer(player) {
-    if ((-1 === players.indexOf(player)) && (-1 === waitingPlayers.indexOf(player))){
+    if ((-1 === players.indexOf(player)) && (-1 === waitingPlayers.indexOf(player))) {
       waitingPlayers.push(player);
       socket.emit('please_wait', player);
     }
@@ -106,12 +89,14 @@
   function onPleaseWait(player) {
     if (player === document.getElementById('player').value) {
       document.getElementById('please_wait').style.display = 'block';
+      startBtn.removeEventListener('click', onStartClick);
+      startBtn.disabled = true;
     }
   }
   
   function onSocketStart(sentPoints) {
     startBtn.removeEventListener('click', onStartClick);
-    startBtn.className += ' disabled';
+    startBtn.disabled = true;
     socket.removeListener('start', onSocketStart);
     socket.removeListener('player', acceptPlayer);
     socket.removeListener('please_wait', onPleaseWait);
@@ -135,6 +120,20 @@
     document.getElementById('distance').innerHTML = '0';
     document.getElementById('time').innerHTML = '0';
     startTime = new Date().getTime();
+  }
+  
+  function acceptPlayer(player) {
+    var myName = document.getElementById('player').value;
+    if (-1 === players.indexOf(player)) {
+      players.push(player);
+      viewUpdatePlayers();
+      if (myName === player) {
+        socket.on('start', onSocketStart);
+        startBtn.style.visibility = 'visible';
+      } else if (('' !== myName) && (-1 !== players.indexOf(myName))) {
+        socket.emit('player', myName);
+      }
+    }
   }
   
   function viewAddPoint(point) {
@@ -164,7 +163,7 @@
   }
   
   board.addEventListener('click', function (event) {
-    var coords = board.relMouseCoords(event),
+    var coords = board.relativeMouseCoords(event),
       x = coords.x,
       y = coords.y,
       iPoint,
@@ -215,7 +214,7 @@
     socket.on('start', onSocketStart);
     socket.on('player', acceptPlayer);
     startBtn.addEventListener('click', onStartClick, false);
-    startBtn.className = '';
+    startBtn.disabled = false;
     players = players.concat(waitingPlayers);
     viewUpdatePlayers();
   }
@@ -273,12 +272,13 @@
   
   
   startBtn.addEventListener('click', onStartClick, false);
+  startBtn.disabled = false;
+  startBtn.style.visibility = 'hidden';
   socket.on('player', acceptPlayer);
   socket.on('please_wait', onPleaseWait);
   if ('' === document.getElementById('player').value) {
     waitBtn.style.visibility = 'hidden';
   }
-  startBtn.style.visibility = 'hidden';
   document.getElementById('run').style.visibility = 'hidden';
   document.getElementById('result').style.visibility = 'hidden';
   document.getElementById('please_wait').style.display = 'none';
