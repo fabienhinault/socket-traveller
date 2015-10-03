@@ -20,10 +20,16 @@
     waitingPlayers = [],
     ways = [],
     startBtn = document.getElementById('btn-start'),
-    waitBtn = document.getElementById('btn-wait'),
+    addBtn = document.getElementById('btn-add'),
     inputPlayer = document.getElementById('player'),
     handlerTimeout,
-    state;
+    state,
+    stateWaiting = {
+      onSocketWay: nop
+    },
+    statePlaying = {
+      onSocketWay: displayWay
+    };
 
   HTMLCanvasElement.prototype.relativeMouseCoords = function (event) {
     var totalOffsetX = 0,
@@ -44,27 +50,6 @@
     return {x: canvasX, y: canvasY};
   };
   
-  function StateNotAdded() {
-    this = {};
-    return this;
-  }
-  function StateAdded() {
-    this = {};
-    return this;
-  }
-  function StatePlaying() {
-    this = {};
-    return this;
-  }
-  function StateOver() {
-    this = {};
-    return this;
-  }
-  function StateWaiting() {
-    this = {};
-    return this;
-  }
-  
   boardContext.drawPoint = function (point, width) {
     var offset = Math.ceil((width - 1) / 2);
     this.fillRect(point.x - offset, point.y - offset, width, width);
@@ -73,18 +58,15 @@
   boardContext.fillStyle = '#000000';
   boardContext.drawPoint(startPoint, 5);
   
-  function onWaitClick(event) {
+  function onAddClick(event) {
     socket.emit('player', inputPlayer.value);
   }
-  
+
   function onPlayerInput(event) {
     if (event.target.value !== '') {
-      waitBtn.style.visibility = 'visible';
+      addBtn.style.visibility = 'visible';
     }
   }
-  
-  inputPlayer.addEventListener('input', onPlayerInput, false);
-  waitBtn.addEventListener('click', onWaitClick, false);
 
   function onStartClick(event) {
     var points = [],
@@ -100,31 +82,30 @@
   function viewUpdatePlayers() {
     document.getElementById('players').innerHTML = players.join(', ');
   }
-  
-  
+
   function refusePlayer(player) {
-    if ((-1 === players.indexOf(player)) && (-1 === waitingPlayers.indexOf(player))) {
+    if ((-1 === players.indexOf(player)) && (-1 === waitingPlayers.indexOf(player)) && (player !== inputPlayer.value)) {
       waitingPlayers.push(player);
       socket.emit('please_wait', player);
     }
   }
-  
+
   function onPleaseWait(player) {
     if (player === inputPlayer.value) {
+      state = stateWaiting;
       document.getElementById('please_wait').style.display = 'block';
-      socket.removeListener('way', onSocketWay);
       startBtn.removeEventListener('click', onStartClick);
       startBtn.disabled = true;
     }
   }
-  
+
   function onSocketStart(sentPoints) {
+    state = statePlaying;
     startBtn.removeEventListener('click', onStartClick);
     startBtn.disabled = true;
     socket.removeListener('start', onSocketStart);
     socket.removeListener('player', acceptPlayer);
     socket.removeListener('please_wait', onPleaseWait);
-    socket.on('way', onSocketWay);
     socket.on('player', refusePlayer);
     ways = [];
     way = [startPoint];
@@ -237,6 +218,7 @@
   function again() {
     clearTimeout(handlerTimeout);
     socket.on('start', onSocketStart);
+    socket.removeListener('player', refusePlayer);
     socket.on('player', acceptPlayer);
     startBtn.addEventListener('click', onStartClick, false);
     startBtn.disabled = false;
@@ -268,12 +250,14 @@
     if (-1 === players.indexOf(inputPlayer.value)) {
       startBtn.style.visibility = 'hidden';
       points = [];
+      socket.removeListener('player', refusePlayer);
+      socket.on('player', acceptPlayer);
     } else {
       again();
     }
   }
   
-  function onSocketWay(sentWay) {
+  function displayWay(sentWay) {
     var iWay, way, iPoint, point, context, playerIndex;
     if (0 === ways.length) {
       handlerTimeout = setTimeout(terminate, sentWay.duration);
@@ -303,14 +287,23 @@
     }
   }
   
+  function nop() {}
   
+  function onSocketWay(way) {
+    state.onSocketWay(way);
+  }
+  
+  
+  inputPlayer.addEventListener('input', onPlayerInput, false);
+  addBtn.addEventListener('click', onAddClick, false);
   startBtn.addEventListener('click', onStartClick, false);
   startBtn.disabled = false;
   startBtn.style.visibility = 'hidden';
   socket.on('player', acceptPlayer);
   socket.on('please_wait', onPleaseWait);
+  socket.on('way', onSocketWay);
   if ('' === inputPlayer.value) {
-    waitBtn.style.visibility = 'hidden';
+    addBtn.style.visibility = 'hidden';
   }
   document.getElementById('run').style.visibility = 'hidden';
   document.getElementById('result').style.visibility = 'hidden';
