@@ -68,6 +68,112 @@
     }
   }
 
+  
+  function range(n) {
+    return Array.apply(null, Array(n)).map(function (_, i) {return i;});
+  }
+  
+  function getDistances(points){
+    var iBegin, iEnd, distances = [], p1, p2, dx, dy, d;
+    for(iBegin = 0; iBegin < points.length; iBegin += 1) {
+      distances[iBegin] = [];
+    }
+    for(iBegin = 0; iBegin < points.length; iBegin += 1) {
+      for(iEnd = iBegin + 1; iEnd < points.length; iEnd += 1) {
+        p1 = points[iBegin];
+        p2 = points[iEnd];
+        dx = p1.x - p2.x;
+        dy = p1.y - p2.y;
+        d = Math.sqrt(dx * dx + dy * dy);
+        distances[iBegin][iEnd] = d;
+        distances[iEnd][iBegin] = d;
+      }
+    }
+    return distances;
+  }
+
+  
+  function heldKarp(origin, points) {
+    var minWays = [],
+        fullWays,
+        solutionKey,
+        distances = getDistances([origin].concat(points)),
+        solution, startTime;
+    
+    function init() {
+      var iPoint, remainingIndices;
+      minWays[1] = {};
+      for(iPoint = 0; iPoint < points.length; iPoint += 1) {
+        remainingIndices = range(points.length);
+        remainingIndices.splice(iPoint, 1);
+        minWays[1][iPoint.toString()] =
+          {setIndices: [],
+           last: iPoint,
+           distance: distances[0][iPoint + 1],
+           wayIndices: [iPoint],
+           remainingIndices: remainingIndices};
+      }
+    }
+    
+    function addPoint(iPoint, minWay, k) {
+      var setIndices, shortest, distance, newKey, remainingIndices, iOld;
+      remainingIndices = minWay.remainingIndices.filter(
+        function(i) {return i !== iPoint;});
+      iOld = minWay.last;
+      setIndices = minWay.setIndices.concat(iOld).sort();
+      distance = minWay.distance + distances[iOld + 1][iPoint + 1];
+      newKey = setIndices.join(',') + ',' + iPoint.toString();
+      shortest = minWays[k][newKey];
+      if((undefined === shortest) || (distance < shortest.distance)) {
+        minWays[k][newKey] =
+          {setIndices: setIndices,
+           last: iPoint,
+           distance: distance,
+           wayIndices: minWay.wayIndices.concat(iPoint),
+           remainingIndices: remainingIndices};
+      }
+    }
+    
+    function iterate() {
+      var k, iWay, value, keys, key;
+      for(k = 2; k <= points.length; k += 1) {
+        minWays[k] = {};
+        keys = Object.keys(minWays[k - 1]);
+        for(iWay = 0; iWay < keys.length; iWay += 1) {
+          key = keys[iWay];
+          value = minWays[k - 1][key];
+          value.remainingIndices.forEach(
+            function(iPoint){addPoint(iPoint, value, k)});
+        }
+      }
+    }
+    
+    function finalize() {
+      var fullKeys
+      fullKeys = Object.keys(fullWays);
+      solutionKey = fullKeys[0];
+      solutionKey = fullKeys.reduce(
+        function(sofar, currentKey){
+          if(fullWays[currentKey].distance < fullWays[sofar].distance) {
+            return currentKey;
+          } else {
+            return sofar;
+          }
+        }, solutionKey);
+    }
+    startTime = new Date().getTime();
+    init();
+    iterate();
+    fullWays = minWays[points.length];
+    finalize();
+    
+    fullWays[solutionKey].way = [origin].concat(
+     fullWays[solutionKey].wayIndices.map(function(i) {return points[i];}));
+    fullWays[solutionKey].duration = new Date().getTime() - startTime;
+    return fullWays[solutionKey];
+  }
+
+  
   function onStartClick(event) {
     var points = [],
       iPoint;
@@ -203,18 +309,6 @@
     return {x: scale(point2d.x), y: scale(point2d.y)};
   }
   
-  function drawResult(player, way) {
-    var iPoint, point, context = document.getElementById(player).getContext('2d');
-    context.fillStyle = '#000000';
-    context.beginPath();
-    context.moveTo(scale(way[0].x), scale(way[0].y));
-    for (iPoint = 0; iPoint < way.length; iPoint += 1) {
-      point = scaleXY(way[iPoint]);
-      context.lineTo(point.x, point.y);
-    }
-    context.stroke();
-  }
-  
   function again() {
     clearTimeout(handlerTimeout);
     socket.on('start', onSocketStart);
@@ -257,8 +351,20 @@
     }
   }
   
+  function drawResult(player, way) {
+    var iPoint, point, context = document.getElementById(player).getContext('2d');
+    context.fillStyle = '#000000';
+    context.beginPath();
+    context.moveTo(scale(way[0].x), scale(way[0].y));
+    for (iPoint = 0; iPoint < way.length; iPoint += 1) {
+      point = scaleXY(way[iPoint]);
+      context.lineTo(point.x, point.y);
+    }
+    context.stroke();
+  }
+  
   function displayWay(sentWay) {
-    var iWay, way, iPoint, point, context, playerIndex;
+    var iWay, way, iPoint, point, context, playerIndex, sol;
     if (0 === ways.length) {
       handlerTimeout = setTimeout(terminate, sentWay.duration);
     }
@@ -283,6 +389,11 @@
       document.getElementById('run').style.display = 'none';
     }
     if (ways.length === players.length) {
+      points = [].concat(way.way);
+      points.shift();
+      sol = heldKarp(startPoint, points);
+      sol.player = "Held Karp";
+      displayWay(sol);
       again();
     }
   }
